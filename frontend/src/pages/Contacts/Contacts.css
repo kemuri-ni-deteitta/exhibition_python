@@ -159,16 +159,37 @@
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid #ff6600;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
 }
 
 .yandex-map {
-  width: 100%;
-  height: 400px;
+  width: 100% !important;
+  height: 400px !important;
+  max-width: 100% !important;
   background: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #666;
+  transition: none; /* Prevent CSS transitions from interfering with map resize */
+  box-sizing: border-box;
+}
+
+/* Override any Yandex Maps inline styles that might cause stretching */
+.yandex-map * {
+  box-sizing: border-box;
+}
+
+.yandex-map .ymaps-2-1-79-map {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.yandex-map .ymaps-2-1-79-inner-panes {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Loading state for map */

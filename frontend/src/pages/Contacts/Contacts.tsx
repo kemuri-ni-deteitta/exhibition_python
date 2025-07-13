@@ -59,6 +59,14 @@ const Contacts: React.FC = () => {
     return () => {
       // Cleanup map instance on unmount
       if (mapInstanceRef.current) {
+        // Remove resize event listener
+        if (mapInstanceRef.current._resizeHandler) {
+          window.removeEventListener('resize', mapInstanceRef.current._resizeHandler);
+        }
+        // Disconnect resize observer
+        if (mapInstanceRef.current._resizeObserver) {
+          mapInstanceRef.current._resizeObserver.disconnect();
+        }
         mapInstanceRef.current.destroy();
         mapInstanceRef.current = null;
       }
@@ -87,6 +95,91 @@ const Contacts: React.FC = () => {
       );
 
       myMap.geoObjects.add(placemark);
+      
+      // Handle fullscreen toggle events
+      myMap.controls.get('fullscreenControl').events.add('press', () => {
+        // Small delay to ensure the container has resized
+        setTimeout(() => {
+          // Force container to reset its dimensions
+          if (mapRef.current) {
+            const container = mapRef.current;
+            
+            // Force reset container dimensions to CSS values
+            container.style.width = '';
+            container.style.height = '';
+            container.style.width = '100%';
+            container.style.height = '400px';
+            
+            // Force redraw
+            container.style.display = 'none';
+            container.offsetHeight; // Trigger reflow
+            container.style.display = 'flex';
+            
+            // Trigger map resize
+            try {
+              myMap.container.fitToViewport();
+            } catch (e) {
+              // Fallback: try alternative resize methods
+              console.warn('fitToViewport failed, using fallback');
+              try {
+                myMap.container.invalidateSize && myMap.container.invalidateSize();
+              } catch (e2) {
+                // Last resort: trigger a manual resize event
+                window.dispatchEvent(new Event('resize'));
+              }
+            }
+          }
+        }, 200);
+      });
+
+      // Handle window resize events
+      const handleResize = () => {
+        if (myMap && mapRef.current) {
+          // Reset container dimensions
+          const container = mapRef.current;
+          const computedStyle = window.getComputedStyle(container);
+          container.style.width = computedStyle.width;
+          container.style.height = computedStyle.height;
+          
+          try {
+            myMap.container.fitToViewport();
+          } catch (e) {
+            myMap.container.invalidateSize ? myMap.container.invalidateSize() : null;
+          }
+        }
+      };
+
+      window.addEventListener('resize', handleResize);
+      
+      // Observer for container size changes (more robust for fullscreen changes)
+      const resizeObserver = new ResizeObserver(() => {
+        if (myMap && mapRef.current) {
+          // Small delay to ensure the resize has completed
+          setTimeout(() => {
+            const container = mapRef.current;
+            if (container) {
+              // Force width to be exactly what CSS says it should be
+              container.style.width = '100%';
+              container.style.height = '400px';
+              
+              try {
+                myMap.container.fitToViewport();
+              } catch (e) {
+                myMap.container.invalidateSize ? myMap.container.invalidateSize() : null;
+              }
+            }
+          }, 100);
+        }
+      });
+      
+      if (mapRef.current) {
+        resizeObserver.observe(mapRef.current);
+      }
+      
+      // Store handlers for cleanup
+      myMap._resizeHandler = handleResize;
+      myMap._resizeObserver = resizeObserver;
+      
       mapInstanceRef.current = myMap;
     }
   };
